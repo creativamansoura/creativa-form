@@ -7,7 +7,11 @@
  * Upserts the admin doc so re-running is safe.
  */
 
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+dotenv.config(); // fallback to .env if present
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 
