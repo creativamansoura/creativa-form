@@ -11,16 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect } from "react";
+import Image from "next/image";
 
 const SubmitSchema = z.object({
   fullName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(200),
-  university: z.string().min(2, "يرجى إدخال اسم الجامعة").max(200),
-  college: z.string().min(2, "يرجى إدخال اسم الكلية").max(200),
-  email: z.string().email("البريد الإلكتروني غير صحيح"),
+  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقم"),
   phone: z
     .string()
     .regex(/^[+\d\s\-()]{7,20}$/, "رقم الهاتف غير صحيح")
     .min(7, "رقم الهاتف غير صحيح"),
+  email: z.string().email("البريد الإلكتروني غير صحيح"),
+  university: z.string().min(2, "يرجى إدخال اسم الجامعة").max(200),
+  college: z.string().min(2, "يرجى إدخال اسم الكلية").max(200),
 });
 
 type SubmitForm = z.infer<typeof SubmitSchema>;
@@ -29,6 +31,7 @@ export default function PublicFormPage() {
   const { slug } = useParams<{ slug: string }>();
   const [formTitle, setFormTitle] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isClosed, setIsClosed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -49,6 +52,9 @@ export default function PublicFormPage() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setFormTitle(data.title);
+        if (data.isActive === false) {
+          setIsClosed(true);
+        }
       } catch {
         setNotFound(true);
       }
@@ -92,6 +98,25 @@ export default function PublicFormPage() {
           </div>
           <h1 className="text-2xl font-bold mb-2">الصفحة غير موجودة</h1>
           <p className="text-muted-foreground">رابط التسجيل هذا غير صحيح أو انتهت صلاحيته</p>
+        </div>
+      </main>
+    );
+  }
+
+  // --- Closed state ---
+  if (isClosed) {
+    return (
+      <main
+        dir="rtl"
+        lang="ar"
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-orange-50 p-4"
+      >
+        <div className="text-center max-w-sm">
+          <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-100 mb-6">
+            <AlertCircle className="h-10 w-10 text-orange-500" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">عذراً، التسجيل مغلق</h1>
+          <p className="text-muted-foreground">تم إغلاق باب التسجيل في «{formTitle}»</p>
         </div>
       </main>
     );
@@ -145,10 +170,8 @@ export default function PublicFormPage() {
       <div className="w-full max-w-xl animate-fade-in">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/30 mb-5">
-            <svg className="h-9 w-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-            </svg>
+          <div className="inline-flex items-center justify-center mb-5">
+            <Image src="/logo.png" alt="Logo" width={120} height={120} className="object-contain drop-shadow-md" priority />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2 leading-snug">{formTitle}</h1>
           <p className="text-muted-foreground text-sm">يرجى تعبئة البيانات التالية للتسجيل</p>
@@ -161,17 +184,73 @@ export default function PublicFormPage() {
               {/* Full Name */}
               <div className="space-y-2">
                 <Label htmlFor="fullName" className="text-sm font-semibold">
-                  الاسم الكامل <span className="text-red-500">*</span>
+                  الاسم بالكامل باللغة العربية <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="fullName"
-                  placeholder="مثال: أحمد محمد علي"
+                  placeholder="الاسم بالكامل باللغة العربية"
                   {...register("fullName")}
                   aria-invalid={!!errors.fullName}
                   className="text-right placeholder:text-right h-11"
                 />
                 {errors.fullName && (
                   <p className="text-xs text-red-600">{errors.fullName.message}</p>
+                )}
+              </div>
+
+              {/* National ID */}
+              <div className="space-y-2">
+                <Label htmlFor="nationalId" className="text-sm font-semibold">
+                  الرقم القومي <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="nationalId"
+                  placeholder="الرقم القومي"
+                  dir="ltr"
+                  {...register("nationalId")}
+                  aria-invalid={!!errors.nationalId}
+                  className="text-left placeholder:text-left h-11"
+                />
+                {errors.nationalId && (
+                  <p className="text-xs text-red-600">{errors.nationalId.message}</p>
+                )}
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-semibold">
+                  رقم التواصل واتساب <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="رقم التواصل واتساب"
+                  dir="ltr"
+                  {...register("phone")}
+                  aria-invalid={!!errors.phone}
+                  className="text-left placeholder:text-left h-11"
+                />
+                {errors.phone && (
+                  <p className="text-xs text-red-600">{errors.phone.message}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-semibold">
+                  البريد الإلكتروني <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="البريد الإلكتروني"
+                  dir="ltr"
+                  {...register("email")}
+                  aria-invalid={!!errors.email}
+                  className="text-left placeholder:text-left h-11"
+                />
+                {errors.email && (
+                  <p className="text-xs text-red-600">{errors.email.message}</p>
                 )}
               </div>
 
@@ -182,7 +261,7 @@ export default function PublicFormPage() {
                 </Label>
                 <Input
                   id="university"
-                  placeholder="مثال: جامعة القاهرة"
+                  placeholder="الجامعة"
                   {...register("university")}
                   aria-invalid={!!errors.university}
                   className="text-right placeholder:text-right h-11"
@@ -195,55 +274,17 @@ export default function PublicFormPage() {
               {/* College */}
               <div className="space-y-2">
                 <Label htmlFor="college" className="text-sm font-semibold">
-                  الكلية / الفاكولتة <span className="text-red-500">*</span>
+                  الكلية <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="college"
-                  placeholder="مثال: كلية الهندسة"
+                  placeholder="الكلية"
                   {...register("college")}
                   aria-invalid={!!errors.college}
                   className="text-right placeholder:text-right h-11"
                 />
                 {errors.college && (
                   <p className="text-xs text-red-600">{errors.college.message}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold">
-                  البريد الإلكتروني <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="example@email.com"
-                  dir="ltr"
-                  {...register("email")}
-                  aria-invalid={!!errors.email}
-                  className="text-left placeholder:text-left h-11"
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-600">{errors.email.message}</p>
-                )}
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-semibold">
-                  رقم التواصل <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="01xxxxxxxxx"
-                  dir="ltr"
-                  {...register("phone")}
-                  aria-invalid={!!errors.phone}
-                  className="text-left placeholder:text-left h-11"
-                />
-                {errors.phone && (
-                  <p className="text-xs text-red-600">{errors.phone.message}</p>
                 )}
               </div>
 
@@ -274,9 +315,18 @@ export default function PublicFormPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          جميع البيانات محمية ولن تُشارك مع أي طرف ثالث
-        </p>
+        <div className="flex flex-col items-center justify-center gap-1 mt-6 text-xs text-muted-foreground" dir="ltr">
+          <p>للتواصل والاستفسار</p>
+          <div className="flex items-center gap-3">
+            <a href="mailto:creativa.mansoura@gmail.com" className="hover:text-primary transition-colors">
+              creativa.mansoura@gmail.com
+            </a>
+            <span>•</span>
+            <a href="https://wa.me/201110666043" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">
+              +20 11 10666043
+            </a>
+          </div>
+        </div>
       </div>
     </main>
   );

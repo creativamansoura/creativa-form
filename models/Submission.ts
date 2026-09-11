@@ -3,6 +3,7 @@ import mongoose, { Schema, model, models, Document } from "mongoose";
 export interface ISubmission extends Document {
   formId: mongoose.Types.ObjectId;
   fullName: string;
+  nationalId: string;
   university: string;
   college: string;
   email: string;
@@ -14,6 +15,7 @@ const SubmissionSchema = new Schema<ISubmission>(
   {
     formId: { type: Schema.Types.ObjectId, ref: "Form", required: true, index: true },
     fullName: { type: String, required: true, trim: true },
+    nationalId: { type: String, required: true, trim: true },
     university: { type: String, required: true, trim: true },
     college: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },

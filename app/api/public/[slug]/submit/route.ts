@@ -6,6 +6,7 @@ import { Submission } from "@/models/Submission";
 
 const SubmitSchema = z.object({
   fullName: z.string().min(2).max(200).trim(),
+  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقم").trim(),
   university: z.string().min(2).max(200).trim(),
   college: z.string().min(2).max(200).trim(),
   email: z.string().email().trim().toLowerCase(),
@@ -35,16 +36,21 @@ export async function POST(
 
     await connectDB();
 
-    const form = await Form.findOne({ slug: slug.trim() }).select("_id");
+    const form = await Form.findOne({ slug: slug.trim() }).select("_id isActive");
     if (!form) {
       return NextResponse.json({ error: "Form not found" }, { status: 404 });
     }
 
-    const { fullName, university, college, email, phone } = parsed.data;
+    if (form.isActive === false) {
+      return NextResponse.json({ error: "Registration is closed for this form" }, { status: 403 });
+    }
+
+    const { fullName, nationalId, university, college, email, phone } = parsed.data;
 
     await Submission.create({
       formId: form._id,
       fullName,
+      nationalId,
       university,
       college,
       email,

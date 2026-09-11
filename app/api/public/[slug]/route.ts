@@ -12,14 +12,14 @@ export async function GET(
 
     await connectDB();
     const form = await Form.findOne({ slug: slug.trim() })
-      .select("title slug")
+      .select("title slug isActive")
       .lean();
 
     if (!form) {
       return NextResponse.json({ error: "Form not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ title: form.title, slug: form.slug });
+    return NextResponse.json({ title: form.title, slug: form.slug, isActive: form.isActive !== false });
   } catch (err) {
     console.error("[GET /api/public/slug]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

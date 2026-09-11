@@ -39,22 +39,9 @@ export async function GET(
       views: [{ showGridLines: true }],
     });
 
-    // Merged title row
-    sheet.mergeCells("A1:F1");
-    const titleCell = sheet.getCell("A1");
-    titleCell.value = form.title;
-    titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFFFFFFF" } };
-    titleCell.alignment = { horizontal: "center", vertical: "middle" };
-    titleCell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF1E3A5F" }, // dark navy
-    };
-    sheet.getRow(1).height = 36;
-
-    // Header row (row 2)
     const headers = [
       { header: "Full Name", key: "fullName", width: 28 },
+      { header: "National ID", key: "nationalId", width: 20 },
       { header: "University", key: "university", width: 30 },
       { header: "College / Faculty", key: "college", width: 28 },
       { header: "Email", key: "email", width: 32 },
@@ -64,18 +51,18 @@ export async function GET(
 
     sheet.columns = headers;
 
-    const headerRow = sheet.getRow(2);
-    headerRow.height = 28;
+    const headerRow = sheet.getRow(1);
+    headerRow.height = 30;
     headerRow.eachCell((cell) => {
-      cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+      cell.font = { name: "Calibri", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FF2563EB" }, // blue-600
+        fgColor: { argb: "FF334155" }, // slate-700
       };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = {
-        bottom: { style: "thin", color: { argb: "FF1D4ED8" } },
+        bottom: { style: "medium", color: { argb: "FF0f172a" } }, // slate-900
       };
     });
 
@@ -83,6 +70,7 @@ export async function GET(
     submissions.forEach((sub, i) => {
       const row = sheet.addRow({
         fullName: sub.fullName,
+        nationalId: sub.nationalId,
         university: sub.university,
         college: sub.college,
         email: sub.email,
@@ -93,16 +81,19 @@ export async function GET(
       });
 
       row.height = 22;
-      const bg = i % 2 === 0 ? "FFFAFAFA" : "FFF0F4FF";
+      const bg = i % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC"; // slate-50
       row.eachCell((cell) => {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bg } };
-        cell.alignment = { vertical: "middle" };
-        cell.font = { name: "Calibri", size: 10 };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.font = { name: "Calibri", size: 11 };
+        cell.border = {
+          bottom: { style: "thin", color: { argb: "FFE2E8F0" } }, // slate-200
+        };
       });
     });
 
-    // Freeze panes below the two header rows
-    sheet.views = [{ state: "frozen", xSplit: 0, ySplit: 2, topLeftCell: "A3", activeCell: "A3" }];
+    // Freeze panes below the header row
+    sheet.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
     // Stream buffer
     const buffer = await workbook.xlsx.writeBuffer();

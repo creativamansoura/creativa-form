@@ -25,7 +25,7 @@ export async function GET(
     await connectDB();
 
     const formId = new mongoose.Types.ObjectId(id);
-    const form = await Form.findById(formId).select("title submissionsCount").lean();
+    const form = await Form.findById(formId).select("title submissionsCount isActive").lean();
 
     if (!form) {
       return NextResponse.json({ error: "Form not found" }, { status: 404 });

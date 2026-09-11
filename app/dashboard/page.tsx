@@ -31,6 +31,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import Link from "next/link";
+import Image from "next/image";
 
 interface FormDoc {
   _id: string;
@@ -58,7 +59,11 @@ export default function DashboardPage() {
     resolver: zodResolver(CreateSchema),
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const [baseUrl, setBaseUrl] = useState("");
+
+  useEffect(() => {
+    setBaseUrl(window.location.origin);
+  }, []);
 
   const fetchForms = useCallback(async () => {
     try {
@@ -127,9 +132,7 @@ export default function DashboardPage() {
       <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow shadow-primary/20">
-              <BookOpen className="h-5 w-5 text-white" />
-            </div>
+            <Image src="/logo.png" alt="Logo" width={40} height={40} className="object-contain" priority />
             <span className="font-bold text-lg">Creativa Forms</span>
           </div>
           <Button

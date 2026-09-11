@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -14,6 +15,8 @@ import {
   Loader2,
   BookOpen,
   FileSpreadsheet,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +34,7 @@ import {
 interface Submission {
   _id: string;
   fullName: string;
+  nationalId: string;
   university: string;
   college: string;
   email: string;
@@ -41,6 +45,7 @@ interface Submission {
 interface FormInfo {
   title: string;
   submissionsCount: number;
+  isActive: boolean;
 }
 
 interface PaginationInfo {
@@ -61,6 +66,7 @@ export default function SubmissionsPage() {
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -113,6 +119,26 @@ export default function SubmissionsPage() {
     }
   }
 
+  async function handleToggleStatus() {
+    if (!form) return;
+    setToggling(true);
+    try {
+      const res = await fetch(`/api/forms/${id}/toggle-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !form.isActive }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setForm((prev) => prev ? { ...prev, isActive: data.isActive } : null);
+      toast.success(data.isActive ? "Registration opened!" : "Registration closed!");
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setToggling(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Top nav */}
@@ -124,9 +150,7 @@ export default function SubmissionsPage() {
             </Link>
           </Button>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen className="h-4 w-4 text-white" />
-            </div>
+            <Image src="/logo.png" alt="Logo" width={32} height={32} className="object-contain" priority />
             <span className="font-bold">Creativa Forms</span>
           </div>
         </div>
@@ -138,7 +162,14 @@ export default function SubmissionsPage() {
           <div>
             {form ? (
               <>
-                <h1 className="text-2xl font-bold tracking-tight">{form.title}</h1>
+                <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                  {form.title}
+                  {!form.isActive && (
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                      Closed
+                    </Badge>
+                  )}
+                </h1>
                 <div className="flex items-center gap-2 mt-1">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground text-sm">
@@ -153,24 +184,41 @@ export default function SubmissionsPage() {
               </div>
             )}
           </div>
-          <Button
-            id="export-btn"
-            onClick={handleExport}
-            disabled={exporting || !form}
-            className="shadow-md shadow-primary/20"
-          >
-            {exporting ? (
-              <>
-                <Loader2 className="animate-spin" />
-                Exporting…
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet />
-                Export to Excel
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant={form?.isActive ? "outline" : "default"}
+              onClick={handleToggleStatus}
+              disabled={toggling || !form}
+              className={!form?.isActive ? "bg-orange-600 hover:bg-orange-700" : ""}
+            >
+              {toggling ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : form?.isActive ? (
+                <Lock className="h-4 w-4 mr-2" />
+              ) : (
+                <Unlock className="h-4 w-4 mr-2" />
+              )}
+              {form?.isActive ? "Close Registration" : "Open Registration"}
+            </Button>
+            <Button
+              id="export-btn"
+              onClick={handleExport}
+              disabled={exporting || !form}
+              className="shadow-md shadow-primary/20"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Exporting…
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet />
+                  Export to Excel
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -213,6 +261,7 @@ export default function SubmissionsPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
                     <TableHead>Full Name</TableHead>
+                    <TableHead>National ID</TableHead>
                     <TableHead>University</TableHead>
                     <TableHead className="hidden md:table-cell">College</TableHead>
                     <TableHead>Email</TableHead>
@@ -224,6 +273,7 @@ export default function SubmissionsPage() {
                   {submissions.map((sub) => (
                     <TableRow key={sub._id}>
                       <TableCell className="font-medium">{sub.fullName}</TableCell>
+                      <TableCell className="font-mono text-sm">{sub.nationalId}</TableCell>
                       <TableCell className="text-muted-foreground max-w-[180px] truncate">
                         {sub.university}
                       </TableCell>
