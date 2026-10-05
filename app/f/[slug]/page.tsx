@@ -1,35 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { useEffect } from "react";
 import Image from "next/image";
 
-const SubmitSchema = z.object({
-  fullName: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل").max(200),
-  nationalId: z.string().regex(/^\d{14}$/, "الرقم القومي يجب أن يتكون من 14 رقم"),
-  phone: z
-    .string()
-    .regex(/^[+\d\s\-()]{7,20}$/, "رقم الهاتف غير صحيح")
-    .min(7, "رقم الهاتف غير صحيح"),
-  email: z.string().email("البريد الإلكتروني غير صحيح"),
-  university: z.string().min(2, "يرجى إدخال اسم الجامعة").max(200),
-  college: z.string().min(2, "يرجى إدخال اسم الكلية").max(200),
-});
-
-type SubmitForm = z.infer<typeof SubmitSchema>;
+interface FormField {
+  id: string;
+  type: string;
+  label: string;
+  required: boolean;
+  options?: string[];
+}
 
 export default function PublicFormPage() {
   const { slug } = useParams<{ slug: string }>();
   const [formTitle, setFormTitle] = useState<string | null>(null);
+  const [formFields, setFormFields] = useState<FormField[]>([]);
   const [notFound, setNotFound] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -40,9 +32,7 @@ export default function PublicFormPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SubmitForm>({
-    resolver: zodResolver(SubmitSchema),
-  });
+  } = useForm();
 
   useEffect(() => {
     async function loadForm() {
@@ -52,6 +42,7 @@ export default function PublicFormPage() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setFormTitle(data.title);
+        setFormFields(data.fields || []);
         if (data.isActive === false) {
           setIsClosed(true);
         }
@@ -62,7 +53,7 @@ export default function PublicFormPage() {
     loadForm();
   }, [slug]);
 
-  async function onSubmit(data: SubmitForm) {
+  async function onSubmit(data: any) {
     setSubmitting(true);
     setServerError(null);
     try {
@@ -75,7 +66,17 @@ export default function PublicFormPage() {
         setSubmitted(true);
       } else {
         const json = await res.json();
-        setServerError(json.error ?? "حدث خطأ، يرجى المحاولة مجدداً");
+        if (json.issues) {
+          // Flatten issues
+          const issueKeys = Object.keys(json.issues);
+          if (issueKeys.length > 0) {
+            setServerError(json.issues[issueKeys[0]][0] || "توجد أخطاء في البيانات المدخلة");
+          } else {
+            setServerError("توجد أخطاء في البيانات المدخلة");
+          }
+        } else {
+          setServerError(json.error ?? "حدث خطأ، يرجى المحاولة مجدداً");
+        }
       }
     } catch {
       setServerError("تعذّر الاتصال بالخادم، يرجى المحاولة مجدداً");
@@ -84,14 +85,9 @@ export default function PublicFormPage() {
     }
   }
 
-  // --- 404 state ---
   if (notFound) {
     return (
-      <main
-        dir="rtl"
-        lang="ar"
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-red-50 p-4"
-      >
+      <main dir="rtl" lang="ar" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-red-50 p-4">
         <div className="text-center max-w-sm">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-red-100 mb-6">
             <AlertCircle className="h-10 w-10 text-red-500" />
@@ -103,14 +99,9 @@ export default function PublicFormPage() {
     );
   }
 
-  // --- Closed state ---
   if (isClosed) {
     return (
-      <main
-        dir="rtl"
-        lang="ar"
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-orange-50 p-4"
-      >
+      <main dir="rtl" lang="ar" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-orange-50 p-4">
         <div className="text-center max-w-sm">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-100 mb-6">
             <AlertCircle className="h-10 w-10 text-orange-500" />
@@ -122,51 +113,106 @@ export default function PublicFormPage() {
     );
   }
 
-  // --- Loading title ---
   if (formTitle === null) {
     return (
-      <main
-        dir="rtl"
-        lang="ar"
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50"
-      >
+      <main dir="rtl" lang="ar" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </main>
     );
   }
 
-  // --- Success state ---
   if (submitted) {
     return (
-      <main
-        dir="rtl"
-        lang="ar"
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-green-50 p-4"
-      >
+      <main dir="rtl" lang="ar" className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-green-50 p-4">
         <div className="text-center max-w-sm animate-fade-in">
           <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-green-100 mb-6 shadow-lg">
             <CheckCircle2 className="h-14 w-14 text-green-600" />
           </div>
           <h1 className="text-2xl font-bold mb-3 text-green-800">تم التسجيل بنجاح! 🎉</h1>
-          <p className="text-muted-foreground text-lg leading-relaxed mb-2">
-            شكراً على تسجيلك في
-          </p>
+          <p className="text-muted-foreground text-lg leading-relaxed mb-2">شكراً على تسجيلك في</p>
           <p className="font-semibold text-foreground text-base mb-6">«{formTitle}»</p>
-          <p className="text-sm text-muted-foreground">
-            سيتم التواصل معك قريباً بتفاصيل إضافية
-          </p>
+          <p className="text-sm text-muted-foreground">سيتم التواصل معك قريباً بتفاصيل إضافية</p>
         </div>
       </main>
     );
   }
 
-  // --- Main form ---
+  const renderField = (field: FormField) => {
+    const isLtr = field.id === "email" || field.id === "nationalId" || field.id === "phone";
+    
+    switch (field.type) {
+      case "paragraph":
+        return (
+          <textarea
+            id={field.id}
+            placeholder={field.label}
+            dir={isLtr ? "ltr" : "rtl"}
+            {...register(field.id, { required: field.required ? "هذا الحقل مطلوب" : false })}
+            className={`flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${isLtr ? "text-left placeholder:text-left" : "text-right placeholder:text-right"}`}
+          />
+        );
+      case "multiple_choice":
+        return (
+          <div className="space-y-2 mt-2">
+            {field.options?.map((opt, i) => (
+              <label key={i} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value={opt}
+                  {...register(field.id, { required: field.required ? "هذا الحقل مطلوب" : false })}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                />
+                <span className="text-sm">{opt}</span>
+              </label>
+            ))}
+          </div>
+        );
+      case "checkboxes":
+        return (
+          <div className="space-y-2 mt-2">
+            {field.options?.map((opt, i) => (
+              <label key={i} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  value={opt}
+                  {...register(field.id, { required: field.required ? "هذا الحقل مطلوب" : false })}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <span className="text-sm">{opt}</span>
+              </label>
+            ))}
+          </div>
+        );
+      case "dropdown":
+        return (
+          <select
+            id={field.id}
+            {...register(field.id, { required: field.required ? "هذا الحقل مطلوب" : false })}
+            className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">اختر إجابة...</option>
+            {field.options?.map((opt, i) => (
+              <option key={i} value={opt}>{opt}</option>
+            ))}
+          </select>
+        );
+      case "short_answer":
+      default:
+        return (
+          <Input
+            id={field.id}
+            type={field.id === "email" ? "email" : field.id === "phone" ? "tel" : "text"}
+            placeholder={field.label}
+            dir={isLtr ? "ltr" : "rtl"}
+            {...register(field.id, { required: field.required ? "هذا الحقل مطلوب" : false })}
+            className={`h-11 ${isLtr ? "text-left placeholder:text-left" : "text-right placeholder:text-right"}`}
+          />
+        );
+    }
+  };
+
   return (
-    <main
-      dir="rtl"
-      lang="ar"
-      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 flex items-center justify-center"
-    >
+    <main dir="rtl" lang="ar" className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 flex items-center justify-center">
       <div className="w-full max-w-xl animate-fade-in">
         {/* Header */}
         <div className="text-center mb-8">
@@ -180,115 +226,19 @@ export default function PublicFormPage() {
         <Card className="border-0 shadow-xl bg-white/90 backdrop-blur-sm">
           <CardContent className="p-6 sm:p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+              
+              {formFields.map((field) => (
+                <div key={field.id} className="space-y-2">
+                  <Label htmlFor={field.id} className="text-sm font-semibold">
+                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                  </Label>
+                  {renderField(field)}
+                  {errors[field.id] && (
+                    <p className="text-xs text-red-600">{errors[field.id]?.message as string}</p>
+                  )}
+                </div>
+              ))}
 
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-semibold">
-                  الاسم بالكامل باللغة العربية <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="fullName"
-                  placeholder="الاسم بالكامل باللغة العربية"
-                  {...register("fullName")}
-                  aria-invalid={!!errors.fullName}
-                  className="text-right placeholder:text-right h-11"
-                />
-                {errors.fullName && (
-                  <p className="text-xs text-red-600">{errors.fullName.message}</p>
-                )}
-              </div>
-
-              {/* National ID */}
-              <div className="space-y-2">
-                <Label htmlFor="nationalId" className="text-sm font-semibold">
-                  الرقم القومي <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nationalId"
-                  placeholder="الرقم القومي"
-                  dir="ltr"
-                  {...register("nationalId")}
-                  aria-invalid={!!errors.nationalId}
-                  className="text-left placeholder:text-left h-11"
-                />
-                {errors.nationalId && (
-                  <p className="text-xs text-red-600">{errors.nationalId.message}</p>
-                )}
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-semibold">
-                  رقم التواصل واتساب <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="رقم التواصل واتساب"
-                  dir="ltr"
-                  {...register("phone")}
-                  aria-invalid={!!errors.phone}
-                  className="text-left placeholder:text-left h-11"
-                />
-                {errors.phone && (
-                  <p className="text-xs text-red-600">{errors.phone.message}</p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold">
-                  البريد الإلكتروني <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="البريد الإلكتروني"
-                  dir="ltr"
-                  {...register("email")}
-                  aria-invalid={!!errors.email}
-                  className="text-left placeholder:text-left h-11"
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-600">{errors.email.message}</p>
-                )}
-              </div>
-
-              {/* University */}
-              <div className="space-y-2">
-                <Label htmlFor="university" className="text-sm font-semibold">
-                  الجامعة <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="university"
-                  placeholder="الجامعة"
-                  {...register("university")}
-                  aria-invalid={!!errors.university}
-                  className="text-right placeholder:text-right h-11"
-                />
-                {errors.university && (
-                  <p className="text-xs text-red-600">{errors.university.message}</p>
-                )}
-              </div>
-
-              {/* College */}
-              <div className="space-y-2">
-                <Label htmlFor="college" className="text-sm font-semibold">
-                  الكلية <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="college"
-                  placeholder="الكلية"
-                  {...register("college")}
-                  aria-invalid={!!errors.college}
-                  className="text-right placeholder:text-right h-11"
-                />
-                {errors.college && (
-                  <p className="text-xs text-red-600">{errors.college.message}</p>
-                )}
-              </div>
-
-              {/* Server error */}
               {serverError && (
                 <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />

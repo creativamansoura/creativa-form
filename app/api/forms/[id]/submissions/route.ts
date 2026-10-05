@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { Form } from "@/models/Form";
 import { Submission } from "@/models/Submission";
+import { DEFAULT_FORM_FIELDS } from "@/lib/constants";
 import mongoose from "mongoose";
 
 const PAGE_SIZE = 20;
@@ -25,7 +26,7 @@ export async function GET(
     await connectDB();
 
     const formId = new mongoose.Types.ObjectId(id);
-    const form = await Form.findById(formId).select("title submissionsCount isActive").lean();
+    const form = await Form.findById(formId).select("title submissionsCount isActive fields").lean();
 
     if (!form) {
       return NextResponse.json({ error: "Form not found" }, { status: 404 });
@@ -47,8 +48,10 @@ export async function GET(
       .limit(PAGE_SIZE)
       .lean();
 
+    const fields = form.fields && form.fields.length > 0 ? form.fields : DEFAULT_FORM_FIELDS;
+
     return NextResponse.json({
-      form,
+      form: { ...form, fields },
       submissions,
       pagination: {
         page,

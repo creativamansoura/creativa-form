@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   Lock,
   Unlock,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ interface Submission {
   college: string;
   email: string;
   phone: string;
+  answers?: Record<string, any>;
   submittedAt: string;
 }
 
@@ -46,6 +48,7 @@ interface FormInfo {
   title: string;
   submissionsCount: number;
   isActive: boolean;
+  fields?: any[];
 }
 
 interface PaginationInfo {
@@ -186,6 +189,15 @@ export default function SubmissionsPage() {
           </div>
           <div className="flex gap-2">
             <Button
+              variant="outline"
+              asChild
+            >
+              <Link href={`/dashboard/forms/${id}/builder`}>
+                <Settings className="h-4 w-4 mr-2" />
+                Edit Form Fields
+              </Link>
+            </Button>
+            <Button
               variant={form?.isActive ? "outline" : "default"}
               onClick={handleToggleStatus}
               disabled={toggling || !form}
@@ -260,32 +272,32 @@ export default function SubmissionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead>Full Name</TableHead>
-                    <TableHead>National ID</TableHead>
-                    <TableHead>University</TableHead>
-                    <TableHead className="hidden md:table-cell">College</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                    <TableHead className="hidden lg:table-cell">Submitted At</TableHead>
+                    {form?.fields?.map((f: any) => (
+                      <TableHead key={f.id} className="max-w-[200px] truncate">{f.label}</TableHead>
+                    ))}
+                    <TableHead className="hidden lg:table-cell w-[150px]">Submitted At</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {submissions.map((sub) => (
+                  {submissions.map((sub: any) => (
                     <TableRow key={sub._id}>
-                      <TableCell className="font-medium">{sub.fullName}</TableCell>
-                      <TableCell className="font-mono text-sm">{sub.nationalId}</TableCell>
-                      <TableCell className="text-muted-foreground max-w-[180px] truncate">
-                        {sub.university}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {sub.college}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {sub.email}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">
-                        {sub.phone}
-                      </TableCell>
+                      {form?.fields?.map((f: any) => {
+                        let val = "";
+                        if (f.id === "fullName") val = sub.fullName;
+                        else if (f.id === "nationalId") val = sub.nationalId;
+                        else if (f.id === "university") val = sub.university;
+                        else if (f.id === "college") val = sub.college;
+                        else if (f.id === "email") val = sub.email;
+                        else if (f.id === "phone") val = sub.phone;
+                        else if (sub.answers && sub.answers[f.id]) {
+                           val = Array.isArray(sub.answers[f.id]) ? sub.answers[f.id].join(", ") : sub.answers[f.id];
+                        }
+                        return (
+                          <TableCell key={f.id} className="max-w-[200px] truncate" title={val}>
+                            {val}
+                          </TableCell>
+                        );
+                      })}
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(sub.submittedAt).toLocaleString("en-GB", {
                           day: "numeric",

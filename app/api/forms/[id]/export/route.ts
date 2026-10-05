@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Form } from "@/models/Form";
 import { Submission } from "@/models/Submission";
+import { DEFAULT_FORM_FIELDS } from "@/lib/constants";
 
 // GET /api/forms/[id]/export (protected)
 export async function GET(
@@ -39,15 +40,14 @@ export async function GET(
       views: [{ showGridLines: true }],
     });
 
-    const headers = [
-      { header: "Full Name", key: "fullName", width: 28 },
-      { header: "National ID", key: "nationalId", width: 20 },
-      { header: "University", key: "university", width: 30 },
-      { header: "College / Faculty", key: "college", width: 28 },
-      { header: "Email", key: "email", width: 32 },
-      { header: "Phone", key: "phone", width: 18 },
-      { header: "Submitted At", key: "submittedAt", width: 24 },
-    ];
+    const fields = form.fields && form.fields.length > 0 ? form.fields : DEFAULT_FORM_FIELDS;
+
+    const headers = fields.map((f: any) => ({
+      header: f.label,
+      key: f.id,
+      width: Math.max(20, f.label.length + 5)
+    }));
+    headers.push({ header: "Submitted At", key: "submittedAt", width: 24 });
 
     sheet.columns = headers;
 
@@ -68,17 +68,22 @@ export async function GET(
 
     // Data rows
     submissions.forEach((sub, i) => {
-      const row = sheet.addRow({
-        fullName: sub.fullName,
-        nationalId: sub.nationalId,
-        university: sub.university,
-        college: sub.college,
-        email: sub.email,
-        phone: sub.phone,
-        submittedAt: sub.submittedAt
-          ? new Date(sub.submittedAt).toLocaleString("en-GB")
-          : "",
+      const rowData: Record<string, any> = {};
+      fields.forEach((f: any) => {
+        // Check legacy mapping first, then check answers map
+        if (f.id === "fullName") rowData[f.id] = sub.fullName;
+        else if (f.id === "nationalId") rowData[f.id] = sub.nationalId;
+        else if (f.id === "university") rowData[f.id] = sub.university;
+        else if (f.id === "college") rowData[f.id] = sub.college;
+        else if (f.id === "email") rowData[f.id] = sub.email;
+        else if (f.id === "phone") rowData[f.id] = sub.phone;
+        else if (sub.answers && sub.answers[f.id]) rowData[f.id] = Array.isArray(sub.answers[f.id]) ? sub.answers[f.id].join(", ") : sub.answers[f.id];
+        else rowData[f.id] = "";
       });
+      
+      rowData.submittedAt = sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("en-GB") : "";
+
+      const row = sheet.addRow(rowData);
 
       row.height = 22;
       const bg = i % 2 === 0 ? "FFFFFFFF" : "FFF8FAFC"; // slate-50
